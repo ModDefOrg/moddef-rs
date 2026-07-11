@@ -8,8 +8,14 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+permissions:
+  contents: read
+
 jobs:
   test:
+    # Fork PRs don't run CI: PRs from outside the org must be pulled
+    # into a repo branch by a maintainer first (supply-chain guard).
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     name: Test (stable)
     runs-on: ubuntu-latest
     steps:
@@ -43,6 +49,9 @@ jobs:
         run: cargo test
 
   no-std:
+    # Fork PRs don't run CI: PRs from outside the org must be pulled
+    # into a repo branch by a maintainer first (supply-chain guard).
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     name: no_std / embedded
     runs-on: ubuntu-latest
     steps:
@@ -72,6 +81,9 @@ jobs:
         run: cargo build --target thumbv7em-none-eabihf
 
   msrv:
+    # Fork PRs don't run CI: PRs from outside the org must be pulled
+    # into a repo branch by a maintainer first (supply-chain guard).
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     name: MSRV (1.85)
     runs-on: ubuntu-latest
     steps:
@@ -87,6 +99,9 @@ jobs:
         run: cargo check --workspace --exclude moddef-conformance
 
   schema-drift:
+    # Fork PRs don't run CI: PRs from outside the org must be pulled
+    # into a repo branch by a maintainer first (supply-chain guard).
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     name: Vendored proto drift
     runs-on: ubuntu-latest
     steps:
