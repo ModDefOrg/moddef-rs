@@ -1,0 +1,189 @@
+// ModDef v1 schema — DRAFT until v1.0. See types.proto for the stability policy.
+//
+// mapping.proto — physical Modbus mapping, transforms, register fields, string
+// encoding, composed values, date/time, sentinels, and write semantics.
+// Spec: §9 (endianness), §10 (transform + dynamic scale), §11 (write semantics),
+// §13 (bit/register fields), §14 (composed), §15 (strings), §8.4/§8.5.
+syntax = "proto3";
+
+package moddef.v1;
+
+import "moddef/v1/types.proto";
+
+option go_package = "github.com/ModDefOrg/moddef/go/genpb/moddef/v1;moddefv1";
+
+// §14 Kind of composed (multi-register) value.
+enum ComposedKind {
+  COMPOSED_KIND_UNSPECIFIED = 0;
+  MANTISSA_EXPONENT = 1;
+}
+
+// §11.3 Write behavior for writable / command points.
+enum WriteBehavior {
+  WRITE_BEHAVIOR_UNSPECIFIED = 0;
+  DIRECT = 1;
+  MOMENTARY = 2;
+  LATCH = 3;
+  MASKED = 4;
+  COMMAND_TRIGGER = 5;
+}
+
+// §15 String charset / padding / termination.
+enum Charset {
+  CHARSET_UNSPECIFIED = 0;
+  ASCII = 1;
+  UTF8 = 2;
+}
+enum Padding {
+  PADDING_UNSPECIFIED = 0;
+  PADDING_NULL = 1;
+  PADDING_SPACE = 2;
+  PADDING_NONE = 3;
+}
+enum Termination {
+  TERMINATION_UNSPECIFIED = 0;
+  FIXED_LENGTH = 1;
+  NULL_TERMINATED = 2;
+}
+
+// §10.4 Mode for register-referenced (dynamic) scaling.
+enum ScaleMode {
+  SCALE_MODE_UNSPECIFIED = 0;
+  POW10 = 1; // value = raw * 10^ref  (SunSpec SF)
+  MULTIPLY = 2; // value = raw * ref / denominator
+}
+
+// §8.5 Date/time value encoding.
+enum DateTimeEncoding {
+  DATETIME_ENCODING_UNSPECIFIED = 0;
+  EPOCH_S = 1;
+  EPOCH_MS = 2;
+  PACKED_BCD_DATETIME = 3;
+  SPLIT_FIELDS = 4;
+}
+
+// §9, §14, §14.1 Physical location and encoding of a point's raw data.
+message Mapping {
+  AddressSpace space = 1;
+  uint32 offset = 2;
+  uint32 length_words = 3;
+  uint32 bit_index = 4;
+
+  ByteOrder byte_order = 5;
+  WordOrder word_order = 6;
+  bool sign_magnitude = 7; // v0.4 — sign-magnitude instead of two's complement
+  uint32 stride_words = 8; // v0.4 — repeating-array element stride (§14.1)
+  uint32 model_relative_offset = 9; // v0.4 — offset within a discovered model (§7.3)
+
+  ComposedMapping composed = 10;
+  repeated uint32 allowed_function_codes = 11; // §7.2
+  StringEncoding string_encoding = 12; // §15
+}
+
+// §14 Mantissa/exponent composed value: value = mantissa * base^exponent.
+// `base` MUST NOT be zero (MDE406).
+message ComposedMapping {
+  Mapping mantissa = 1;
+  Mapping exponent = 2;
+  int64 base = 3;
+  ComposedKind kind = 4;
+}
+
+// §10.2 Value transform pipeline: value = raw * scale + offset, then clamp.
+// Exactly one of `scale` and `scale_ref` may be set.
+message Transform {
+  Rational scale = 1;
+  Rational offset = 2;
+  Clamp clamp = 3;
+  ScaleRef scale_ref = 4; // v0.4 — register-referenced scale (§10.4)
+}
+
+message Clamp {
+  bool enabled = 1;
+  double min_value = 2;
+  double max_value = 3;
+}
+
+// §13 Named bit field within a register (boolean / small enum). value_type may
+// reference an enum. This is the legacy/simple form; see RegisterField (§13.1).
+message BitField {
+  string field_id = 1;
+  string name = 2;
+  uint32 bit_offset = 3;
+  uint32 bit_length = 4;
+  ValueType value_type = 5;
+}
+
+// §13.1 Typed sub-field over a register window (its own type/scale/unit).
+message RegisterField {
+  string field_id = 1;
+  string name = 2;
+  uint32 bit_offset = 3; // LSB = 0, across the whole mapped window
+  uint32 bit_length = 4;
+  ValueType value_type = 5;
+  StorageType storage_type = 6; // e.g. BCD for a packed-BCD sub-value
+  Transform transform = 7;
+  string unit = 8;
+  EnumRef enum_ref = 9;
+}
+
+// §8.4 Unavailable / sentinel value (post-decode, pre-scale raw pattern).
+message NaValue {
+  int64 raw = 1;
+  string meaning = 2; // optional, e.g. "not_implemented", "over_range"
+}
+
+// §10.4 Register-referenced (dynamic) scaling.
+message ScaleRef {
+  string point_id = 1; // the SF / factor register
+  ScaleMode mode = 2;
+  int64 denominator = 3; // for MULTIPLY: value = raw * ref / denominator
+}
+
+// §10.5 Value/scale/unit selected by another register.
+message SelectorRef {
+  string point_id = 1;
+  map<int64, SelectorCase> cases = 2;
+}
+message SelectorCase {
+  Rational scale = 1;
+  Rational offset = 2;
+  string unit = 3;
+}
+
+// §15 String encoding details. Register length comes from Mapping.length_words.
+message StringEncoding {
+  Charset charset = 1;
+  Padding padding = 2;
+  Termination termination = 3;
+}
+
+// §8.5 Date/time value encoding spec.
+message DateTimeSpec {
+  DateTimeEncoding encoding = 1;
+  StorageType width = 2; // U32 / U64 for epoch encodings
+}
+
+// §11.5 Distinct write-side encoding.
+message WriteEncoding {
+  StorageType storage_type = 1;
+  Transform transform = 2;
+  uint32 prefix_high_byte = 3; // optional device "magic" high byte on write
+}
+
+// §11.2/§11.3/§11.4 Write semantics for writable / command points.
+message WriteSemantics {
+  WriteBehavior behavior = 1;
+  string confirmation_point = 2; // point_id read back to confirm
+  string requires_enable_point = 3; // point_id that must be enabled first
+  WriteConstraints constraints = 4;
+}
+
+message WriteConstraints {
+  Rational min_value = 1;
+  Rational max_value = 2;
+  Rational step = 3;
+  repeated int64 allowed_values = 4;
+  uint32 cooldown_ms = 5;
+  string safety_note = 6;
+}

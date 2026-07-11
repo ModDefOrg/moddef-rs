@@ -1,0 +1,107 @@
+// ModDef v1 schema — DRAFT until v1.0. See types.proto for the stability policy.
+//
+// device.proto — device profiles, register blocks, points, and variants.
+// Spec: §16 (profiles), §17 (blocks + overlay + discovery), §18 (variants),
+// §7.3 (dynamic addressing), §17.1 (conditional presence), plus §7–§15 per point.
+syntax = "proto3";
+
+package moddef.v1;
+
+import "moddef/v1/mapping.proto";
+import "moddef/v1/measurand.proto";
+import "moddef/v1/types.proto";
+
+option go_package = "github.com/ModDefOrg/moddef/go/genpb/moddef/v1;moddefv1";
+
+// §7.3 Dynamic / discovered addressing for a register block.
+enum DiscoveryKind {
+  DISCOVERY_KIND_UNSPECIFIED = 0;
+  SUNSPEC = 1;
+}
+
+message Discovery {
+  DiscoveryKind kind = 1;
+  repeated uint32 anchor_candidates = 2; // e.g. 0, 40000, 50000
+  uint32 model_id = 3; // SunSpec model to resolve this block to
+}
+
+// §17.1 Conditional point/block presence.
+message Availability {
+  string point_id = 1; // gating point/register
+  int64 equals = 2;
+}
+
+// §16 A device model, family, or reusable abstract device.
+message DeviceProfile {
+  string device_id = 1;
+  string vendor = 2;
+  string model = 3;
+  string family = 4;
+  string description = 5;
+
+  repeated Transport supported_transports = 6;
+  uint32 default_unit_id = 7;
+  repeated string firmware_versions = 8; // §16
+
+  repeated RegisterBlock blocks = 10;
+  repeated DeviceVariant variants = 20;
+}
+
+// §18 Firmware/hardware/regional/option variant of a base profile.
+message DeviceVariant {
+  string variant_id = 1;
+  string name = 2;
+  string base_device_id = 3;
+
+  repeated PointOverride overrides = 10;
+  repeated Point additions = 11;
+  repeated string removals = 12;
+}
+
+message PointOverride {
+  string point_id = 1;
+  Point replacement = 2;
+}
+
+// §17 A group of related points over a contiguous (or discovered) range.
+message RegisterBlock {
+  string block_id = 1;
+  string name = 2;
+  AddressSpace space = 3;
+  uint32 start_offset = 4;
+  uint32 length_words = 5;
+  bool overlay = 6; // §17 — allow overlap with other blocks (MDE301)
+  Discovery discovery = 7; // v0.4 §7.3 — SunSpec/dynamic addressing
+  repeated Point points = 10;
+}
+
+// §5.3 A user-visible data point exposed by a device.
+message Point {
+  string point_id = 1;
+  string name = 2;
+  string description = 3;
+
+  AccessMode access = 10;
+  StorageType storage_type = 11;
+  ValueType value_type = 12;
+
+  Mapping mapping = 20;
+  Transform transform = 30;
+
+  string unit = 40;
+  uint32 display_precision = 41;
+
+  MeasurandRef measurand = 50;
+
+  repeated BitField bit_fields = 60; // boolean/enum bit ranges (legacy form)
+  repeated RegisterField fields = 61; // v0.4 — typed sub-fields (§13.1)
+  repeated NaValue na_values = 62; // v0.4 — unavailable/sentinel (§8.4)
+  DateTimeSpec datetime = 63; // v0.4 — when primitive=DATETIME (§8.5)
+  WriteEncoding write_encoding = 64; // v0.4 — distinct write path (§11.5)
+  Availability available_if = 65; // v0.4 — conditional presence (§17.1)
+  SelectorRef selector_ref = 66; // v0.4 — meaning/scale by register (§10.5)
+
+  uint32 recommended_poll_period_ms = 70;
+
+  WriteSemantics write = 80; // §11 write behaviors + constraints
+}

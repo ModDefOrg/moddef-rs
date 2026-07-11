@@ -1,0 +1,6 @@
+# Build artifacts (the workspace's and the standalone embedded example's).
+/target/
+/examples/embedded-nostd/target/
+
+# Both Cargo.lock files are committed on purpose: the workspace ships
+# binaries/tests, and the embedded example should build reproducibly.

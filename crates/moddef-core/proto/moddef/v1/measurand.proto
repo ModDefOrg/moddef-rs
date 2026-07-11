@@ -1,0 +1,119 @@
+// ModDef v1 schema — DRAFT until v1.0. See types.proto for the stability policy.
+//
+// measurand.proto — semantic measurand tuple model and OCPP-style aliases.
+// Spec: §21 (system), §22 (model), §23 (catalog), §24 (aliases), §25 (validation).
+syntax = "proto3";
+
+package moddef.v1;
+
+import "moddef/v1/types.proto";
+
+option go_package = "github.com/ModDefOrg/moddef/go/genpb/moddef/v1;moddefv1";
+
+// §22.2 Flow direction for directional quantities.
+enum Direction {
+  DIRECTION_UNSPECIFIED = 0;
+  DIRECTION_NONE = 1;
+  IMPORT = 2;
+  EXPORT = 3;
+  NET = 4;
+  CHARGE = 5;
+  DISCHARGE = 6;
+  FORWARD = 7;
+  REVERSE = 8;
+}
+
+// §22.3 Phase / reference. Wire form mirrors OCPP (L1-N, L1-L2, ...).
+enum PhaseRef {
+  PHASE_REF_UNSPECIFIED = 0;
+  PHASE_NONE = 1;
+  L1 = 2;
+  L2 = 3;
+  L3 = 4;
+  N = 5;
+  L1_N = 6;
+  L2_N = 7;
+  L3_N = 8;
+  L1_L2 = 9;
+  L2_L3 = 10;
+  L3_L1 = 11;
+}
+
+// §22.4 Aggregation across phases / time.
+enum Aggregation {
+  AGGREGATION_UNSPECIFIED = 0;
+  AGGREGATION_NONE = 1;
+  TOTAL = 2;
+  AVERAGE = 3;
+  MINIMUM = 4;
+  MAXIMUM = 5;
+  INSTANTANEOUS = 6;
+}
+
+// §22.5 Where the measurement is taken.
+enum MeasurementLocation {
+  LOCATION_UNSPECIFIED = 0;
+  GRID = 1;
+  LOAD = 2;
+  INLET = 3;
+  OUTLET = 4;
+  BATTERY = 5;
+  PV = 6;
+  INVERTER = 7;
+  EV = 8;
+  CABLE = 9;
+  BODY = 10;
+  INTERNAL = 11;
+  EXTERNAL = 12;
+}
+
+// §22.6 Accumulation kind.
+enum Accumulation {
+  ACCUMULATION_UNSPECIFIED = 0;
+  ACCUMULATION_INSTANTANEOUS = 1;
+  REGISTER = 2;
+  INTERVAL = 3;
+  LIFETIME = 4;
+  SESSION = 5;
+  DAILY = 6;
+  MONTHLY = 7;
+}
+
+// §9.2 / §22 A named measurand definition (typically from a stdlib package).
+message MeasurandDefinition {
+  string measurand_id = 1;
+  string name = 2;
+  string description = 3;
+
+  string base_quantity = 10;
+  Direction direction = 11;
+  PhaseRef phase_ref = 12;
+  Aggregation aggregation = 13;
+  MeasurementLocation location = 14;
+  Accumulation accumulation = 15;
+
+  string canonical_unit = 20;
+  ValueType expected_value_type = 21;
+}
+
+// §22 / §25 Reference to a measurand from a point. Either resolve `measurand_id`
+// or supply an inline semantic tuple (or both, with the tuple as override).
+message MeasurandRef {
+  string measurand_id = 1;
+
+  // Optional inline semantic tuple — avoids defining every combination as a
+  // separate measurand id.
+  string base_quantity = 10;
+  Direction direction = 11;
+  PhaseRef phase_ref = 12;
+  Aggregation aggregation = 13;
+  MeasurementLocation location = 14;
+  Accumulation accumulation = 15;
+}
+
+// §24 Maps an external naming system (e.g. OCPP) to a measurand tuple.
+message MeasurandAlias {
+  string alias = 1;
+  string source = 2;
+  MeasurandRef maps_to = 3;
+}

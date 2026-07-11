@@ -1,0 +1,35 @@
+// ModDef v1 schema — DRAFT until v1.0. See types.proto for the stability policy.
+//
+// document.proto — top-level ModDef document and imports.
+// Spec: §3 (document model), §6 (structure), §19 (imports/packages).
+syntax = "proto3";
+
+package moddef.v1;
+
+import "moddef/v1/device.proto";
+import "moddef/v1/measurand.proto";
+import "moddef/v1/types.proto";
+
+option go_package = "github.com/ModDefOrg/moddef/go/genpb/moddef/v1;moddefv1";
+
+// §6 A complete ModDef document.
+message ModDefDocument {
+  string doc_id = 1;
+  string name = 2;
+  string version = 3;
+  repeated Import imports = 4;
+
+  repeated EnumType enums = 10;
+  repeated StructType structs = 11;
+  repeated MeasurandDefinition measurands = 12;
+  repeated MeasurandAlias measurand_aliases = 13;
+
+  repeated DeviceProfile devices = 20;
+}
+
+// §19 Import of an external ModDef document or package.
+message Import {
+  string uri = 1;
+  string alias = 2;
+  string checksum_sha256 = 3;
+}

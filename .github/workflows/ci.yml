@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Test (stable)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Conformance tests read fixtures and profiles from the sibling
+          # moddef / devices checkouts.
+          path: moddef-rs
+      - uses: actions/checkout@v4
+        with:
+          repository: ModDefOrg/moddef
+          path: moddef
+      - uses: actions/checkout@v4
+        with:
+          repository: ModDefOrg/devices
+          path: devices
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: moddef-rs
+      - name: Format
+        working-directory: moddef-rs
+        run: cargo fmt --all --check
+      - name: Clippy
+        working-directory: moddef-rs
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Test
+        working-directory: moddef-rs
+        run: cargo test
+
+  no-std:
+    name: no_std / embedded
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: moddef-rs
+      - uses: actions/checkout@v4
+        with:
+          repository: ModDefOrg/devices
+          path: devices
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: thumbv7em-none-eabihf
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            moddef-rs
+            moddef-rs/examples/embedded-nostd
+      - name: Core without default features
+        working-directory: moddef-rs
+        run: |
+          cargo build -p moddef-core --no-default-features
+          cargo build -p moddef-core --no-default-features --features alloc
+          cargo build -p moddef-core --no-default-features --target thumbv7em-none-eabihf
+      - name: Generated client on thumbv7em (no_std, no alloc)
+        working-directory: moddef-rs/examples/embedded-nostd
+        run: cargo build --target thumbv7em-none-eabihf
+
+  msrv:
+    name: MSRV (1.85)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: moddef-rs
+      - uses: dtolnay/rust-toolchain@1.85
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: moddef-rs
+      - name: Check
+        working-directory: moddef-rs
+        run: cargo check --workspace --exclude moddef-conformance
+
+  schema-drift:
+    name: Vendored proto drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: moddef-rs
+      - uses: actions/checkout@v4
+        with:
+          repository: ModDefOrg/moddef
+          path: moddef
+      - name: Compare vendored protos with upstream
+        run: |
+          diff -ru moddef/proto/moddef/v1 moddef-rs/crates/moddef-core/proto/moddef/v1

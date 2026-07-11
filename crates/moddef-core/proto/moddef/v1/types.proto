@@ -1,0 +1,169 @@
+// ModDef v1 schema — DRAFT until v1.0.
+//
+// Field numbers are draft and MAY change before v1.0; no wire-compatibility
+// guarantee is offered prior to v1.0. Within a release line, `buf breaking`
+// guards against incompatible changes.
+// Source of truth: spec/moddef_spec_v0_4.md §27. See spec/adr/0001.
+//
+// types.proto — primitive type system, value types, enum/struct libraries.
+// Spec: §7 (address spaces), §8 (data types), §9 (endianness enums),
+// §10 (rational), §12 (enums), §16 (transports).
+syntax = "proto3";
+
+package moddef.v1;
+
+option go_package = "github.com/ModDefOrg/moddef/go/genpb/moddef/v1;moddefv1";
+
+// §7 Address spaces. 0-based offsets within each space.
+enum AddressSpace {
+  ADDRESS_SPACE_UNSPECIFIED = 0;
+  COIL = 1;
+  DISCRETE_INPUT = 2;
+  INPUT_REGISTER = 3;
+  HOLDING_REGISTER = 4;
+}
+
+// §11.1 Access modes.
+enum AccessMode {
+  ACCESS_MODE_UNSPECIFIED = 0;
+  READ_ONLY = 1;
+  WRITE_ONLY = 2;
+  READ_WRITE = 3;
+  COMMAND = 4;
+}
+
+// §9.1 Byte order within a 16-bit word. Default when omitted: BIG_ENDIAN
+// (spec/adr/0004).
+enum ByteOrder {
+  BYTE_ORDER_UNSPECIFIED = 0;
+  BIG_ENDIAN = 1;
+  LITTLE_ENDIAN = 2;
+}
+
+// §9.2 Word order for multi-word values. Default when omitted: WORD_BIG_ENDIAN.
+enum WordOrder {
+  WORD_ORDER_UNSPECIFIED = 0;
+  WORD_BIG_ENDIAN = 1;
+  WORD_LITTLE_ENDIAN = 2;
+}
+
+// §8.2 Physical storage types.
+enum StorageType {
+  STORAGE_TYPE_UNSPECIFIED = 0;
+  BIT = 1;
+  U16 = 2;
+  S16 = 3;
+  U32 = 4;
+  S32 = 5;
+  U64 = 6;
+  S64 = 7;
+  IEEE754_F32 = 8;
+  IEEE754_F64 = 9;
+  STRING_ASCII = 10;
+  STRING_UTF8 = 11;
+  BYTES_RAW = 12;
+  BCD = 13;
+  FIXED_POINT = 14;
+  COMPOSED = 15;
+  U24 = 16; // v0.4
+  U48 = 17; // v0.4
+  S48 = 18; // v0.4
+}
+
+// §8.1 Logical/primitive types exposed to clients.
+enum PrimitiveType {
+  PRIMITIVE_TYPE_UNSPECIFIED = 0;
+  BOOL = 1;
+  INT32 = 2;
+  UINT32 = 3;
+  INT64 = 4;
+  UINT64 = 5;
+  FLOAT32 = 6;
+  FLOAT64 = 7;
+  DECIMAL = 8;
+  STRING = 9;
+  BYTES = 10;
+  DATETIME = 11; // v0.4 — see DateTimeSpec on the Point (§8.5)
+  FLAGS = 12; // v0.4 — see FlagSet in ValueType.kind (§13.2)
+}
+
+// §16 Supported Modbus transports for a device profile.
+enum Transport {
+  TRANSPORT_UNSPECIFIED = 0;
+  MODBUS_RTU = 1;
+  MODBUS_TCP = 2;
+  MODBUS_ASCII = 3;
+}
+
+// §10.1 Rational scale/offset. denominator MUST NOT be zero (MDE405).
+// Zero is {0, 1}. See spec/adr/0003.
+message Rational {
+  int64 numerator = 1;
+  int64 denominator = 2;
+}
+
+// Reference to another point within the same device profile.
+message PointRef {
+  string point_id = 1;
+}
+
+// §8 Logical value type. JSON/YAML: tagged object keyed by the oneof field
+// name, e.g. {primitive: DECIMAL} or {enum_ref: {type_id: "..."}}. See ADR-0001.
+message ValueType {
+  oneof kind {
+    PrimitiveType primitive = 1;
+    EnumRef enum_ref = 2;
+    StructRef struct_ref = 3;
+    ArrayType array = 4;
+    FlagSet flags = 5; // v0.4 (§13.2)
+  }
+}
+
+// §12 Enum type definition (reusable, referenced by points/fields).
+message EnumType {
+  string type_id = 1;
+  string name = 2;
+  string description = 3;
+  repeated EnumValue values = 4;
+}
+
+message EnumValue {
+  int64 value = 1;
+  string name = 2;
+  string description = 3;
+}
+
+// §8.1 STRUCT logical type definition.
+message StructType {
+  string type_id = 1;
+  string name = 2;
+  string description = 3;
+  repeated StructField fields = 4;
+}
+
+message StructField {
+  string field_id = 1;
+  string name = 2;
+  ValueType value_type = 3;
+}
+
+message EnumRef {
+  string type_id = 1;
+}
+
+message StructRef {
+  string type_id = 1;
+}
+
+// §8.1 / §14.1 ARRAY logical type. Either a fixed `length` or a runtime
+// `count_ref` (a register holding the live element count).
+message ArrayType {
+  ValueType element_type = 1;
+  uint32 length = 2;
+  PointRef count_ref = 3; // v0.4
+}
+
+// §13.2 Set of independently-true boolean flags (bit index -> flag name).
+message FlagSet {
+  map<uint32, string> bits = 1;
+}

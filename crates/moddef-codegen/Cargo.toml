@@ -1,0 +1,20 @@
+[package]
+name = "moddef-codegen"
+description = "Generate typed Rust device clients from ModDef documents"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "moddef-rs"
+path = "src/main.rs"
+
+[dependencies]
+moddef-core = { workspace = true }
+heck = "0.5"
+proc-macro2 = "1"
+quote = "1"
+prettyplease = "0.2"
+syn = { version = "2", features = ["full"] }

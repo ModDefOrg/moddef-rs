@@ -1,0 +1,21 @@
+# Standalone crate (not a workspace member): proves the generated client +
+# codec core build for a bare-metal Cortex-M target with no std and no alloc.
+#
+#     cargo build --target thumbv7em-none-eabihf
+#
+# moddef-codegen runs on the host in build.rs; only moddef-core (no default
+# features) is compiled for the target.
+[package]
+name = "moddef-embedded-nostd-example"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[dependencies]
+moddef-core = { path = "../../crates/moddef-core", default-features = false }
+
+[build-dependencies]
+moddef-core = { path = "../../crates/moddef-core" }
+moddef-codegen = { path = "../../crates/moddef-codegen" }

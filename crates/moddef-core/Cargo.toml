@@ -1,0 +1,31 @@
+[package]
+name = "moddef-core"
+description = "ModDef runtime: no_std-friendly Modbus codec, transport trait, document layer and device facade (spec v0.4)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[features]
+default = ["std"]
+# alloc: prost schema types, owned DecodedValue, Device facade, binary parsing.
+alloc = ["dep:prost"]
+# std: protojson YAML/JSON document parsing, fs helpers, std::error::Error.
+std = ["alloc", "dep:pbjson", "dep:serde", "dep:serde_json", "dep:serde_yaml", "prost/std"]
+
+[dependencies]
+prost = { workspace = true, optional = true }
+pbjson = { workspace = true, optional = true }
+serde = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
+serde_yaml = { workspace = true, optional = true }
+
+[build-dependencies]
+protox = "0.7"
+prost = "0.13"
+prost-build = "0.13"
+pbjson-build = "0.7"
+
+[dev-dependencies]
+tokio = { workspace = true }

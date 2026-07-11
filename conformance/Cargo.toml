@@ -1,0 +1,21 @@
+[package]
+name = "moddef-conformance"
+description = "Cross-implementation conformance tests against moddef fixtures"
+publish = false
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+moddef-core = { workspace = true }
+
+[build-dependencies]
+moddef-core = { workspace = true }
+moddef-codegen = { workspace = true }
+
+[dev-dependencies]
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+tokio = { workspace = true }

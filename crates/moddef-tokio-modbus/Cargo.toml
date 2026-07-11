@@ -1,0 +1,23 @@
+[package]
+name = "moddef-tokio-modbus"
+description = "tokio-modbus Transport adapter for moddef-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[features]
+default = ["tcp"]
+tcp = ["tokio-modbus/tcp"]
+rtu = ["tokio-modbus/rtu", "dep:tokio-serial"]
+
+[dependencies]
+moddef-core = { workspace = true }
+tokio = { version = "1", features = ["time"] }
+tokio-modbus = { version = "0.17", default-features = false }
+tokio-serial = { version = "5.4", optional = true }
+
+[dev-dependencies]
+tokio = { workspace = true }
+tokio-modbus = { version = "0.17", default-features = false, features = ["tcp-server"] }
