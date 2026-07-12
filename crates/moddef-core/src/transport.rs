@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Transport abstraction (spec §32.2). Implementations wrap a Modbus client
 //! (see `moddef-tokio-modbus`) or an in-memory register map for tests.
 //!

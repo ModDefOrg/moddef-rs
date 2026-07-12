@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Identifier derivation: ModDef ids (snake/kebab/free-form) → Rust idents,
 //! with keyword escaping and collision suffixes (same seen-set policy as the
 //! TS generator's Scope).

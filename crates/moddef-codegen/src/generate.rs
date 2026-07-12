@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Rust client generator (spec §31, §32.4). Emits one standalone module per
 //! ModDef document containing:
 //!

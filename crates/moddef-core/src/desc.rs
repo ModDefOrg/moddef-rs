@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Lightweight, heap-free point descriptors — the codec core's view of a
 //! point (spec §7–§15). Generated code emits `static` tables of these;
 //! the `alloc` feature converts prost `Point`s into them (see `convert`).

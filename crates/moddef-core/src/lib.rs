@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! ModDef runtime for Rust (spec v0.4).
 //!
 //! Layering (spec §32):

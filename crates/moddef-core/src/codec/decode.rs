@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Point decoder (spec §8–§15), allocation-free. Port of go/codec/decode.go
 //! and moddef-ts decode.ts (incl. §10.5 selector cases with transform
 //! fallback), operating on [`PointDesc`].

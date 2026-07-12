@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Exact rational arithmetic over i128 (spec §10). A 64-bit raw register
 //! value times an i64/i64 rational fits i128 with headroom; gcd
 //! normalization after each operation keeps magnitudes small. `no_std`.

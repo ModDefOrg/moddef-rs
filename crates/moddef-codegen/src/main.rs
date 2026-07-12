@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! `moddef-rs` CLI: generate typed Rust clients from ModDef documents.
 //!
 //! Usage: `moddef-rs gen [-o <dir>] <file.moddef[.yaml|.json]>...`

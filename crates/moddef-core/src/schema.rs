@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Generated protobuf schema types (spec §27), compiled by build.rs from the
 //! vendored proto/moddef/v1/*.proto via protox + prost-build. Under `std`,
 //! pbjson-generated serde impls give protojson-semantics JSON (and, via

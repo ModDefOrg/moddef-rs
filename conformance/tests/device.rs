@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Device facade tests (spec §32.4, §26) mirroring moddef-ts device.test.ts:
 //! point reads across spaces, measurand queries with ambiguity handling,
 //! SunSpec discovery with ID-relative model offsets (spec §7.3), scale_ref

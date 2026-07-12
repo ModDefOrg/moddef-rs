@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Generator unit tests: deterministic output, naming policy, and the key
 //! emitted items for a small document. Full compile + behavior coverage
 //! lives in the conformance crate (build.rs gate + mock-transport e2e).

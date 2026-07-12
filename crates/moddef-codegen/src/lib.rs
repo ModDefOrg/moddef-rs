@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Typed Rust client generator for ModDef documents (spec §31).
 //!
 //! `generate(&ModDefDocument)` emits one deterministic, `no_std`-compatible

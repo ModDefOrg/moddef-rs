@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Decoded value model (spec §8, §13). The no_std core surfaces [`Value`]
 //! (no heap: strings decode into caller buffers, flags stay a raw mask with
 //! name iteration via the descriptor); the `alloc` feature adds the owned

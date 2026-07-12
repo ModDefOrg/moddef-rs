@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Host-side codegen: parse the Growatt SPH registry profile and emit the
 //! typed client into OUT_DIR; the no_std lib includes it.
 

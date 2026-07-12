@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Codec core (spec §8–§15): pure functions over [`crate::desc::PointDesc`],
 //! `no_std` and allocation-free. Kept in behavioral lockstep with go/codec
 //! and moddef-ts's codec (shared vector suite in the conformance tests).

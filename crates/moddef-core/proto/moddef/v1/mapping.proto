@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 // ModDef v1 schema — DRAFT until v1.0. See types.proto for the stability policy.
 //
 // mapping.proto — physical Modbus mapping, transforms, register fields, string

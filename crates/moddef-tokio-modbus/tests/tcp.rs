@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Adapter integration test against an in-process tokio-modbus TCP server:
 //! chunked reads honoring max_read_words, write paths, exception mapping,
 //! and driving the moddef-core dynamic facade end-to-end over real TCP.

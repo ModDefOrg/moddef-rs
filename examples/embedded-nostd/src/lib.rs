@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Generated ModDef client on bare metal: no std, no alloc, no heap.
 //!
 //! The generated `GrowattSph<T>` drives the codec core over its static

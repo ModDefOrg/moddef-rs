@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Runtime device facade (spec §32.4): binds a [`Transport`] to one parsed
 //! device profile for point- and measurand-based reads/writes, with no
 //! codegen. Port of moddef-ts `Device` / go/client/client.go.

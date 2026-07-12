@@ -62,3 +62,16 @@ blessed registry profiles from `../devices`, and compile-gate generated
 clients for every registry profile. `DESIGN.md` documents the architecture
 and the one known wire quirk (prost omits default-valued map-entry fields;
 wire-equivalent with Go/TS, not always byte-identical).
+
+## License of generated output
+
+Code generated from a ModDef document (for example by `moddef gen`) is not a
+derivative work of the ModDef tooling or runtime. You may license the generated
+output under any terms you choose. The runtime it imports (this crate, `moddef-core`) is
+Apache-2.0 licensed; see the LICENSE file for its terms, which apply only to the
+runtime, not to your generated code.
+
+## License
+
+Apache-2.0. See [LICENSE](LICENSE), [NOTICE](NOTICE), and
+[CONTRIBUTING.md](CONTRIBUTING.md).

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Read live values from a Growatt SPH (or any ModDef-described device) over
 //! Modbus TCP using the runtime-parsed document — no codegen involved.
 //!

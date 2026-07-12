@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Document layer (spec §4): parse and serialize the three equivalent
 //! encodings — `.moddef.yaml`, `.moddef.json`, `.moddef` (proto binary).
 //! YAML and JSON follow proto3 JSON (protojson) semantics via the

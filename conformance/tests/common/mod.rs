@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Shared in-memory transport for facade and generated-client tests.
 
 use moddef_core::Transport;

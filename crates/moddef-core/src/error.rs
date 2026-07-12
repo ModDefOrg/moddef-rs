@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Typed errors (spec §26.3/§26.4, §32). Structured variants rather than
 //! strings; `Display` always, `std::error::Error` under `std`.
 

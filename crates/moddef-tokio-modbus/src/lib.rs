@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! tokio-modbus adapter: implements [`moddef_core::Transport`] over a
 //! `tokio_modbus::client::Context` (spec §32.3).
 //!

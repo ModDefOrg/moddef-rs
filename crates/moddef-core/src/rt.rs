@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Runtime support for generated clients (spec §31). `no_std`, allocation
 //! free: generated code (moddef-codegen) drives the codec core over its
 //! `static POINTS` table and calls into these helpers so the emitted method

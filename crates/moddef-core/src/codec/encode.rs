@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Point encoder (spec §10 inverse, §11.4/§11.5), allocation-free. Port of
 //! go/codec/encode.go / moddef-ts encode.ts: composed values and packed
 //! field windows stay read-oriented.

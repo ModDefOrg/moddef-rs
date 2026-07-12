@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! prost [`schema::Point`] → [`PointDesc`] conversion (`alloc`). The codec
 //! core is heap-free, so descriptors borrow: strings and `allowed_values`
 //! borrow the prost message directly; flag/field/case/na tables need owned

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Generated-client conformance (spec §31): build.rs runs moddef-codegen
 //! over every blessed registry profile plus the SunSpec golden fixture and
 //! this file includes the emitted modules — a full compile gate — then

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Compile gate for the generator (spec §31): generate typed clients for
 //! every blessed registry profile plus the SunSpec golden fixture into
 //! OUT_DIR; tests/generated.rs includes them all as modules, so `cargo test`

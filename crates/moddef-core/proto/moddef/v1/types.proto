@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 // ModDef v1 schema — DRAFT until v1.0.
 //
 // Field numbers are draft and MAY change before v1.0; no wire-compatibility

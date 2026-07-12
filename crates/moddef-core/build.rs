@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Compiles the vendored ModDef proto schema (proto/moddef/v1, synced from
 //! ../moddef/proto — see sync-schema.sh) with protox (pure-Rust, no protoc)
 //! into prost types plus pbjson protojson Serialize/Deserialize impls.

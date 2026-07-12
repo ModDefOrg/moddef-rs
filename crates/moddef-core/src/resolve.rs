@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Import resolution (spec §19). Import URIs follow the package form
 //! `moddef:<namespace>:<name>:<version>` (e.g. `moddef:stdlib:measurands:1.0.0`),
 //! resolved against package roots as
