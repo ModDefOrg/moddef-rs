@@ -7,8 +7,8 @@
 use crate::codec::bytes::{assemble_u64, byte_at, copy_bytes, mask_for, sign_extend};
 use crate::codec::rat::Rat;
 use crate::desc::{
-    DateTimeEncoding, PointDesc, ScaleMode, StorageType, StringPadding, StringTermination,
-    ValueKind,
+    ComposedSub, DateTimeEncoding, PointDesc, ScaleMode, StorageType, StringPadding,
+    StringTermination, ValueKind,
 };
 use crate::error::DecodeError;
 use crate::value::Value;
@@ -42,29 +42,15 @@ pub fn decode(p: &PointDesc<'_>, regs: &[u16], ctx: &Ctx<'_>) -> Result<Value, D
     // §14 composed mantissa/exponent over the window.
     if let ValueKind::Composed {
         base,
-        mantissa_offset,
-        mantissa_words,
-        exponent_offset,
-        exponent_words,
+        mantissa,
+        exponent,
     } = p.value
     {
         if base == 0 {
             return Err(DecodeError::ComposedBaseZero);
         }
-        let mant = sub_int(
-            regs,
-            mantissa_offset,
-            mantissa_words,
-            p.byte_big,
-            p.word_big,
-        );
-        let exp = sub_int(
-            regs,
-            exponent_offset,
-            exponent_words,
-            p.byte_big,
-            p.word_big,
-        );
+        let mant = sub_int(regs, mantissa, p.byte_big, p.word_big);
+        let exp = sub_int(regs, exponent, p.byte_big, p.word_big);
         let mut r = Rat::int(mant);
         let b = Rat::int(base);
         if exp >= 0 {
@@ -277,16 +263,27 @@ fn apply_float_scale(mut f: f64, p: &PointDesc<'_>) -> f64 {
     f
 }
 
-/// Signed integer from a sub-window (composed mantissa/exponent, §14).
-fn sub_int(regs: &[u16], offset: u16, words: u8, byte_big: bool, word_big: bool) -> i64 {
-    let idx = offset as usize;
-    let n = if words == 0 { 1 } else { words as usize };
+/// Integer from a composed sub-mapping (§14). A bit window (bit_length > 0)
+/// selects [bit_offset, bit_offset+bit_length) of the assembled sub-window
+/// and sign-extends from bit_length — the §14.2 embedded decade exponent,
+/// where mantissa and exponent share a word (Iskra T5/T6, Eaton PXM).
+fn sub_int(regs: &[u16], s: ComposedSub, byte_big: bool, word_big: bool) -> i64 {
+    let idx = s.offset as usize;
+    let n = if s.words == 0 { 1 } else { s.words as usize };
     if idx + n > regs.len() {
         return 0;
     }
-    let slice = &regs[idx..idx + n];
-    let raw = assemble_u64(slice, byte_big, word_big);
-    sign_extend(raw & mask_for((n * 16) as u32), (n * 16) as u32)
+    let mut raw = assemble_u64(&regs[idx..idx + n], byte_big, word_big);
+    let mut bits = s.width_bits as u32;
+    if s.bit_length > 0 {
+        raw = (raw >> s.bit_offset) & mask_for(s.bit_length as u32);
+        bits = s.bit_length as u32;
+    }
+    if s.signed {
+        sign_extend(raw & mask_for(bits), bits)
+    } else {
+        (raw & mask_for(bits)) as i64
+    }
 }
 
 fn bcd_to_int(regs: &[u16], byte_big: bool, word_big: bool) -> i64 {

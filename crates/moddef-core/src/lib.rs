@@ -47,9 +47,9 @@ pub mod document;
 pub mod resolve;
 
 pub use desc::{
-    Access, AddressSpace, DateTimeEncoding, FieldDesc, NaDesc, PointDesc, Rational, ScaleMode,
-    ScaleRefDesc, SelectorCaseDesc, SelectorDesc, StorageType, StringPadding, StringTermination,
-    ValueKind, WriteDesc,
+    Access, AddressSpace, ComposedSub, DateTimeEncoding, FieldDesc, NaDesc, PointDesc, Rational,
+    ScaleMode, ScaleRefDesc, SelectorCaseDesc, SelectorDesc, StorageType, StringPadding,
+    StringTermination, ValueKind, WriteDesc,
 };
 pub use error::{ConstraintKind, DecodeError, EncodeError, Error};
 pub use transport::Transport;

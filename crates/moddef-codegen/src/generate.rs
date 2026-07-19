@@ -24,8 +24,8 @@ use quote::{format_ident, quote};
 
 use moddef_core::convert::{desc_bufs, point_desc};
 use moddef_core::desc::{
-    Access, AddressSpace, DateTimeEncoding, PointDesc, Rational, ScaleMode, StorageType,
-    StringPadding, StringTermination, ValueKind,
+    Access, AddressSpace, ComposedSub, DateTimeEncoding, PointDesc, Rational, ScaleMode,
+    StorageType, StringPadding, StringTermination, ValueKind,
 };
 use moddef_core::schema;
 
@@ -150,8 +150,8 @@ impl<'a> Emitter<'a> {
                 validate_write, Ctx,
             };
             use moddef_core::desc::{
-                Access, AddressSpace, DateTimeEncoding, FieldDesc, NaDesc, PointDesc, Rational,
-                ScaleMode, ScaleRefDesc, SelectorCaseDesc, SelectorDesc, StorageType,
+                Access, AddressSpace, ComposedSub, DateTimeEncoding, FieldDesc, NaDesc, PointDesc,
+                Rational, ScaleMode, ScaleRefDesc, SelectorCaseDesc, SelectorDesc, StorageType,
                 StringPadding, StringTermination, ValueKind, WriteDesc,
             };
             use moddef_core::rt;
@@ -1098,19 +1098,31 @@ fn value_kind_tokens(v: &ValueKind<'_>) -> TokenStream {
         }
         ValueKind::Composed {
             base,
-            mantissa_offset,
-            mantissa_words,
-            exponent_offset,
-            exponent_words,
+            mantissa,
+            exponent,
         } => {
             let b = Literal::i64_suffixed(*base);
-            quote!(ValueKind::Composed {
-                base: #b,
-                mantissa_offset: #mantissa_offset,
-                mantissa_words: #mantissa_words,
-                exponent_offset: #exponent_offset,
-                exponent_words: #exponent_words,
-            })
+            let sub = |s: &ComposedSub| {
+                let ComposedSub {
+                    offset,
+                    words,
+                    bit_offset,
+                    bit_length,
+                    width_bits,
+                    signed,
+                } = *s;
+                quote!(ComposedSub {
+                    offset: #offset,
+                    words: #words,
+                    bit_offset: #bit_offset,
+                    bit_length: #bit_length,
+                    width_bits: #width_bits,
+                    signed: #signed,
+                })
+            };
+            let m = sub(mantissa);
+            let e = sub(exponent);
+            quote!(ValueKind::Composed { base: #b, mantissa: #m, exponent: #e })
         }
     }
 }

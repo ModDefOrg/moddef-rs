@@ -80,10 +80,26 @@ message Mapping {
   ComposedMapping composed = 10;
   repeated uint32 allowed_function_codes = 11; // §7.2
   StringEncoding string_encoding = 12; // §15
+
+  // §14 (composed sub-mappings). Storage type of the sub-value; determines
+  // signedness (and width when no bit window is set). Spec'd since v0.4 §14;
+  // the field was missing from the schema.
+  StorageType storage_type = 13;
+  // v0.5 §14 — bit window over the assembled sub-mapping window, for values
+  // whose mantissa and exponent share a register word (embedded decade
+  // exponent, e.g. Iskra T5/T6, Eaton PXM "GENERAL FORMAT").
+  // LSB = 0, counted across the whole mapped window (as RegisterField §13.1).
+  // A sub-value with a bit window sign-extends from bit_length, not the
+  // storage width. bit_length = 0 means "no bit window".
+  uint32 bit_offset = 14;
+  uint32 bit_length = 15;
 }
 
 // §14 Mantissa/exponent composed value: value = mantissa * base^exponent.
-// `base` MUST NOT be zero (MDE406).
+// `base` MUST NOT be zero (MDE406). Sub-mapping offsets are word offsets
+// relative to the point's mapped window. Mantissa and exponent may address
+// separate registers, or window the SAME word(s) via bit_offset/bit_length
+// (v0.5 — embedded decade exponent, e.g. Iskra T5/T6, Eaton PXM).
 message ComposedMapping {
   Mapping mantissa = 1;
   Mapping exponent = 2;

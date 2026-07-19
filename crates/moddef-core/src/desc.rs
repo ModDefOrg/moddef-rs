@@ -185,11 +185,27 @@ pub enum ValueKind<'a> {
     /// §14 mantissa/exponent over the read window.
     Composed {
         base: i64,
-        mantissa_offset: u16,
-        mantissa_words: u8,
-        exponent_offset: u16,
-        exponent_words: u8,
+        mantissa: ComposedSub,
+        exponent: ComposedSub,
     },
+}
+
+/// §14 composed sub-mapping (word offset relative to the read window),
+/// optionally carrying a §14.2 bit window — the embedded decade exponent,
+/// where mantissa and exponent share a word (Iskra T5/T6, Eaton PXM).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ComposedSub {
+    pub offset: u16,
+    pub words: u8,
+    /// Bit window over the assembled sub-window (LSB = 0).
+    pub bit_offset: u8,
+    /// Bit window length; 0 = no bit window (whole sub-window).
+    pub bit_length: u8,
+    /// Width in bits when no bit window applies (storage or window width).
+    pub width_bits: u8,
+    /// Sign-extend — from bit_length when windowed, else width_bits. True
+    /// when the sub-mapping declares no storage_type (pre-v0.5 behavior).
+    pub signed: bool,
 }
 
 /// §11.4 Write constraints (engineering units).

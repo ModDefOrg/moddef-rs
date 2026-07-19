@@ -18,9 +18,9 @@
 use alloc::vec::Vec;
 
 use crate::desc::{
-    Access, AddressSpace, DateTimeEncoding, FieldDesc, NaDesc, PointDesc, Rational, ScaleMode,
-    ScaleRefDesc, SelectorCaseDesc, SelectorDesc, StorageType, StringPadding, StringTermination,
-    ValueKind, WriteDesc,
+    Access, AddressSpace, ComposedSub, DateTimeEncoding, FieldDesc, NaDesc, PointDesc, Rational,
+    ScaleMode, ScaleRefDesc, SelectorCaseDesc, SelectorDesc, StorageType, StringPadding,
+    StringTermination, ValueKind, WriteDesc,
 };
 use crate::schema;
 
@@ -210,27 +210,39 @@ fn value_kind<'a>(
     if storage == StorageType::Composed || p.mapping.as_ref().is_some_and(|m| m.composed.is_some())
     {
         let c = p.mapping.as_ref().and_then(|m| m.composed.as_deref());
-        let sub = |m: Option<&schema::Mapping>| -> (u16, u8) {
-            m.map(|m| {
-                (
-                    m.offset as u16,
-                    if m.length_words == 0 {
-                        1
-                    } else {
-                        m.length_words as u8
-                    },
-                )
-            })
-            .unwrap_or((0, 1))
+        let sub = |m: Option<&schema::Mapping>| -> ComposedSub {
+            let Some(m) = m else {
+                return ComposedSub {
+                    offset: 0,
+                    words: 1,
+                    bit_offset: 0,
+                    bit_length: 0,
+                    width_bits: 16,
+                    signed: true,
+                };
+            };
+            let words = if m.length_words == 0 {
+                1
+            } else {
+                m.length_words as u8
+            };
+            // The sub-mapping's storage_type supplies signedness and width;
+            // absent one the sub-value is signed over its whole window
+            // (pre-v0.5 behavior).
+            let st = storage_type(m.storage_type());
+            ComposedSub {
+                offset: m.offset as u16,
+                words,
+                bit_offset: m.bit_offset as u8,
+                bit_length: m.bit_length as u8,
+                width_bits: st.bits(words as usize) as u8,
+                signed: st == StorageType::Unspecified || st.signed(),
+            }
         };
-        let (mo, mw) = sub(c.and_then(|c| c.mantissa.as_deref()));
-        let (eo, ew) = sub(c.and_then(|c| c.exponent.as_deref()));
         return ValueKind::Composed {
             base: c.map(|c| c.base).unwrap_or(0),
-            mantissa_offset: mo,
-            mantissa_words: mw,
-            exponent_offset: eo,
-            exponent_words: ew,
+            mantissa: sub(c.and_then(|c| c.mantissa.as_deref())),
+            exponent: sub(c.and_then(|c| c.exponent.as_deref())),
         };
     }
 

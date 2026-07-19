@@ -10,9 +10,9 @@ use moddef_core::codec::{decode, decode_str, encode, encode_str, validate_write,
 use moddef_core::desc::point;
 use moddef_core::value::{field_value, flag_names};
 use moddef_core::{
-    AddressSpace, ConstraintKind, DateTimeEncoding, DecodeError, FieldDesc, NaDesc, PointDesc,
-    Rational, ScaleMode, ScaleRefDesc, SelectorCaseDesc, SelectorDesc, StorageType, StringPadding,
-    StringTermination, Value, ValueKind, WriteDesc,
+    AddressSpace, ComposedSub, ConstraintKind, DateTimeEncoding, DecodeError, FieldDesc, NaDesc,
+    PointDesc, Rational, ScaleMode, ScaleRefDesc, SelectorCaseDesc, SelectorDesc, StorageType,
+    StringPadding, StringTermination, Value, ValueKind, WriteDesc,
 };
 
 const H: AddressSpace = AddressSpace::HoldingRegister;
@@ -241,19 +241,91 @@ fn scale_ref_missing_errors() {
     );
 }
 
+/// §14 whole-window composed sub-mapping (pre-v0.5 shape: signed, no bit window).
+const fn whole_sub(offset: u16, words: u8) -> ComposedSub {
+    ComposedSub {
+        offset,
+        words,
+        bit_offset: 0,
+        bit_length: 0,
+        width_bits: words * 16,
+        signed: true,
+    }
+}
+
+/// §14.2 bit-windowed composed sub-mapping over a shared word window.
+const fn bit_sub(words: u8, bit_offset: u8, bit_length: u8, signed: bool) -> ComposedSub {
+    ComposedSub {
+        offset: 0,
+        words,
+        bit_offset,
+        bit_length,
+        width_bits: if words as u32 * 16 > 64 { 64 } else { words * 16 },
+        signed,
+    }
+}
+
 #[test]
 fn composed_mantissa_exponent() {
     let mut p = point("pwr", H, 0, StorageType::Composed);
     p.length_words = 2;
     p.value = ValueKind::Composed {
         base: 10,
-        mantissa_offset: 0,
-        mantissa_words: 1,
-        exponent_offset: 1,
-        exponent_words: 1,
+        mantissa: whole_sub(0, 1),
+        exponent: whole_sub(1, 1),
     };
     // 1500 * 10^-1
     assert!((f64_of(decode(&p, &[1500, 0xffff], &Ctx::EMPTY).unwrap()) - 150.0).abs() < 1e-10);
+}
+
+#[test]
+fn composed_embedded_exponent_iskra_t6() {
+    // FD 01 E2 40: exponent 0xFD = -3 (bits 24-31), mantissa 0x01E240 =
+    // 123456 (bits 0-23) -> 123.456.
+    let mut p = point("pwr", H, 0, StorageType::Composed);
+    p.length_words = 2;
+    p.value = ValueKind::Composed {
+        base: 10,
+        mantissa: bit_sub(2, 0, 24, true),
+        exponent: bit_sub(2, 24, 8, true),
+    };
+    assert!((f64_of(decode(&p, &[0xfd01, 0xe240], &Ctx::EMPTY).unwrap()) - 123.456).abs() < 1e-10);
+    // Negative mantissa: -123456 = 0xFE1DC0 in 24-bit two's complement.
+    assert!((f64_of(decode(&p, &[0xfdfe, 0x1dc0], &Ctx::EMPTY).unwrap()) + 123.456).abs() < 1e-10);
+}
+
+#[test]
+fn composed_embedded_unsigned_mantissa_iskra_t5() {
+    // Unsigned mantissa: a set bit 23 must not sign-extend.
+    let mut p = point("v", H, 0, StorageType::Composed);
+    p.length_words = 2;
+    p.value = ValueKind::Composed {
+        base: 10,
+        mantissa: bit_sub(2, 0, 24, false),
+        exponent: bit_sub(2, 24, 8, true),
+    };
+    assert!(
+        (f64_of(decode(&p, &[0x0080, 0x0000], &Ctx::EMPTY).unwrap()) - 8388608.0).abs() < 1e-10
+    );
+}
+
+#[test]
+fn composed_embedded_56bit_mantissa_eaton_pxm() {
+    // Eaton PXM GENERAL FORMAT: 8-bit exponent + 56-bit mantissa in 4 words.
+    let mut p = point("e", H, 0, StorageType::Composed);
+    p.length_words = 4;
+    p.value = ValueKind::Composed {
+        base: 10,
+        mantissa: bit_sub(4, 0, 56, false),
+        exponent: bit_sub(4, 56, 8, true),
+    };
+    // 123456789 * 10^-1 = 12345678.9
+    assert!(
+        (f64_of(decode(&p, &[0xff00, 0x0000, 0x075b, 0xcd15], &Ctx::EMPTY).unwrap())
+            - 12345678.9)
+            .abs()
+            < 1e-6
+    );
 }
 
 #[test]
