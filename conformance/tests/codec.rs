@@ -260,7 +260,11 @@ const fn bit_sub(words: u8, bit_offset: u8, bit_length: u8, signed: bool) -> Com
         words,
         bit_offset,
         bit_length,
-        width_bits: if words as u32 * 16 > 64 { 64 } else { words * 16 },
+        width_bits: if words as u32 * 16 > 64 {
+            64
+        } else {
+            words * 16
+        },
         signed,
     }
 }
@@ -321,8 +325,7 @@ fn composed_embedded_56bit_mantissa_eaton_pxm() {
     };
     // 123456789 * 10^-1 = 12345678.9
     assert!(
-        (f64_of(decode(&p, &[0xff00, 0x0000, 0x075b, 0xcd15], &Ctx::EMPTY).unwrap())
-            - 12345678.9)
+        (f64_of(decode(&p, &[0xff00, 0x0000, 0x075b, 0xcd15], &Ctx::EMPTY).unwrap()) - 12345678.9)
             .abs()
             < 1e-6
     );
