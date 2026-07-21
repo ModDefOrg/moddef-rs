@@ -100,8 +100,9 @@ message CommandResult {
 // (MDE407/MDE503). command_id MUST be unique per profile (MDE502).
 message Command {
   string command_id = 1;
-  // Forward-compat binding to a stdlib command signature (e.g.
-  // "stdlib:ocmf-transaction"). Unvalidated until moddef#3.
+  // Optional free-form role tag naming the standard procedure this command
+  // implements (e.g. "ocmf:start_transaction"). Carried for consumer
+  // dispatch; intentionally not resolved or validated.
   string command_ref = 2;
   string name = 3;
   string description = 4;
