@@ -1,0 +1,112 @@
+// SPDX-License-Identifier: Apache-2.0
+
+// ModDef v1 schema — DRAFT until v1.0. See types.proto for the stability policy.
+//
+// command.proto — multi-step register procedures (commands): typed params,
+// ordered linear steps (write / poll / read), and typed results.
+// Spec: §11.7 (commands), §11.3 (write behavior), §28.9 (validation).
+syntax = "proto3";
+
+package moddef.v1;
+
+import "moddef/v1/mapping.proto";
+import "moddef/v1/types.proto";
+
+option go_package = "github.com/ModDefOrg/moddef/go/genpb/moddef/v1;moddefv1";
+
+// §11.7 Comparison operator for a poll-step exit condition.
+enum ConditionOp {
+  CONDITION_OP_UNSPECIFIED = 0;
+  EQ = 1; // raw == value
+  NE = 2; // raw != value
+  MASK = 3; // (raw & mask) == value
+  RANGE = 4; // min <= raw <= max
+}
+
+// §11.7 Exit condition evaluated against the raw (pre-transform) integer
+// value of the polled point. Structural validity per op: MDE507.
+message Condition {
+  ConditionOp op = 1;
+  int64 value = 2; // EQ / NE / MASK
+  int64 mask = 3; // MASK; MUST NOT be zero
+  int64 min = 4; // RANGE
+  int64 max = 5; // RANGE; MUST be >= min
+}
+
+// §11.7 Fixed-value write to a point (the "trigger" arming a procedure).
+message TriggerWrite {
+  string point_id = 1;
+  int64 value = 2;
+}
+
+// §11.7 One write in a command sequence: either a caller-supplied param
+// (by CommandParam.field) or a fixed trigger value. Step order == wire order.
+message WriteStep {
+  oneof target {
+    string param = 1;
+    TriggerWrite trigger = 2;
+  }
+}
+
+// §11.7 Repeatedly read a point until `until` holds. interval_ms is the
+// pause between reads; timeout_ms bounds the whole step (MDE-level error
+// at runtime on expiry).
+message PollStep {
+  string point_id = 1;
+  Condition until = 2;
+  uint32 interval_ms = 3;
+  uint32 timeout_ms = 4;
+}
+
+// §11.7 Read a point and bind the decoded value to name `into` for use by
+// a CommandResult. A point whose mapping sets length_ref is read at its
+// runtime-resolved length.
+message ReadStep {
+  string point_id = 1;
+  string into = 2;
+}
+
+// §11.7 One step of a command. Steps execute strictly in order; no branching.
+message CommandStep {
+  string name = 1;
+  oneof step {
+    WriteStep write = 2;
+    PollStep poll = 3;
+    ReadStep read = 4;
+  }
+}
+
+// §11.7 Caller-supplied input to a command, with its own wire mapping.
+// `required` params MUST be written by at least one WriteStep (MDE504).
+message CommandParam {
+  string field = 1;
+  StorageType storage_type = 2;
+  ValueType value_type = 3;
+  Mapping mapping = 4;
+  bool required = 5;
+}
+
+// §11.7 One field of a command's result, sourced from a ReadStep binding
+// (`from` names a ReadStep.into or a point_id read after the steps).
+message CommandResult {
+  string field = 1;
+  string from = 2;
+  ValueType value_type = 3;
+  EnumRef enum_ref = 4;
+}
+
+// §11.7 A multi-step register procedure on a device profile. All references
+// (params, point_ids, bindings) resolve within the owning device profile
+// (MDE407/MDE503). command_id MUST be unique per profile (MDE502).
+message Command {
+  string command_id = 1;
+  // Forward-compat binding to a stdlib command signature (e.g.
+  // "stdlib:ocmf-transaction"). Unvalidated until moddef#3.
+  string command_ref = 2;
+  string name = 3;
+  string description = 4;
+
+  repeated CommandParam params = 10;
+  repeated CommandStep steps = 20;
+  repeated CommandResult results = 30;
+}

@@ -35,6 +35,9 @@ pub mod schema;
 pub mod convert;
 
 #[cfg(feature = "alloc")]
+pub mod command;
+
+#[cfg(feature = "alloc")]
 pub mod device;
 
 #[cfg(feature = "alloc")]
@@ -55,6 +58,8 @@ pub use error::{ConstraintKind, DecodeError, EncodeError, Error};
 pub use transport::Transport;
 pub use value::{Reading, Value};
 
+#[cfg(feature = "alloc")]
+pub use command::{condition_met, Delay, ParamValue};
 #[cfg(feature = "alloc")]
 pub use device::Device;
 #[cfg(feature = "alloc")]

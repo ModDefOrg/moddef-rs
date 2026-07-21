@@ -2,13 +2,15 @@
 
 // ModDef v1 schema — DRAFT until v1.0. See types.proto for the stability policy.
 //
-// device.proto — device profiles, register blocks, points, and variants.
-// Spec: §16 (profiles), §17 (blocks + overlay + discovery), §18 (variants),
-// §7.3 (dynamic addressing), §17.1 (conditional presence), plus §7–§15 per point.
+// device.proto — device profiles, register blocks, points, variants, and
+// commands. Spec: §16 (profiles), §17 (blocks + overlay + discovery),
+// §18 (variants), §7.3 (dynamic addressing), §17.1 (conditional presence),
+// §11.7 (commands), plus §7–§15 per point.
 syntax = "proto3";
 
 package moddef.v1;
 
+import "moddef/v1/command.proto";
 import "moddef/v1/mapping.proto";
 import "moddef/v1/measurand.proto";
 import "moddef/v1/types.proto";
@@ -47,6 +49,7 @@ message DeviceProfile {
 
   repeated RegisterBlock blocks = 10;
   repeated DeviceVariant variants = 20;
+  repeated Command commands = 30; // v0.5 §11.7 — multi-step procedures
 }
 
 // §18 Firmware/hardware/regional/option variant of a base profile.

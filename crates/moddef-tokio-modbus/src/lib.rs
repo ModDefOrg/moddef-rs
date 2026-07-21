@@ -215,3 +215,14 @@ impl Transport for TokioModbusTransport {
         self.max_read_words
     }
 }
+
+/// [`Delay`](moddef_core::command::Delay) impl backed by tokio's timer, for
+/// [`moddef_core::device::Device::run_command`] poll steps.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct TokioDelay;
+
+impl moddef_core::command::Delay for TokioDelay {
+    async fn delay_ms(&mut self, ms: u32) {
+        tokio::time::sleep(std::time::Duration::from_millis(u64::from(ms))).await;
+    }
+}

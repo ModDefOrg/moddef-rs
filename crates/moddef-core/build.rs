@@ -13,6 +13,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "proto/moddef/v1/types.proto",
         "proto/moddef/v1/measurand.proto",
         "proto/moddef/v1/mapping.proto",
+        "proto/moddef/v1/command.proto",
         "proto/moddef/v1/device.proto",
         "proto/moddef/v1/document.proto",
     ];

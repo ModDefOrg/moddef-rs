@@ -1132,7 +1132,7 @@ fn desc_tokens(d: &PointDesc<'_>) -> TokenStream {
     let space = space_tokens(d.space);
     let offset = Literal::u16_suffixed(d.offset);
     let model_rel = Literal::u16_suffixed(d.model_relative_offset);
-    let lw = Literal::u8_suffixed(d.length_words);
+    let lw = Literal::u16_suffixed(d.length_words);
     let storage = storage_tokens(d.storage);
     let value = value_kind_tokens(&d.value);
     let byte_big = d.byte_big;

@@ -53,6 +53,14 @@ pub enum Error<T> {
     Encode(EncodeError),
     WriteAccess,
     WriteConstraint(ConstraintKind),
+    /// The command id does not exist in the device profile (§11.7).
+    CommandNotFound,
+    /// A required command param was not supplied to `run_command` (§11.7).
+    RequiredParamMissing,
+    /// A poll step exceeded its `timeout_ms` (§11.7).
+    PollTimeout,
+    /// A command step/result reference does not resolve (§11.7).
+    StepReference,
 }
 
 impl<T> From<DecodeError> for Error<T> {
@@ -116,6 +124,10 @@ impl<T: fmt::Display> fmt::Display for Error<T> {
             Error::Encode(e) => write!(f, "encode: {e}"),
             Error::WriteAccess => write!(f, "point is not writable"),
             Error::WriteConstraint(k) => write!(f, "write violates constraint {k}"),
+            Error::CommandNotFound => write!(f, "command not found"),
+            Error::RequiredParamMissing => write!(f, "required command param missing"),
+            Error::PollTimeout => write!(f, "poll step timed out"),
+            Error::StepReference => write!(f, "command step reference not found"),
         }
     }
 }

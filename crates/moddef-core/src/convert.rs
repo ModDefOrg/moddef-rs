@@ -105,7 +105,7 @@ pub fn point_desc<'a>(
         space: address_space(space),
         offset: m.map(|m| m.offset as u16).unwrap_or(0),
         model_relative_offset: m.map(|m| m.model_relative_offset as u16).unwrap_or(0),
-        length_words: m.map(|m| m.length_words as u8).unwrap_or(0),
+        length_words: m.map(|m| m.length_words as u16).unwrap_or(0),
         storage,
         value: value_kind(p, storage, bufs),
         byte_big: m

@@ -226,7 +226,7 @@ pub struct PointDesc<'a> {
     /// §7.3 SunSpec model-relative offset (ID register = 0). Used when the
     /// owning block declares discovery.
     pub model_relative_offset: u16,
-    pub length_words: u8,
+    pub length_words: u16,
     pub storage: StorageType,
     pub value: ValueKind<'a>,
     /// Byte order within a word: big-endian unless false (§9.1).

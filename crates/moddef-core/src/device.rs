@@ -18,8 +18,9 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use crate::codec::decode::{decode, decode_bytes, decode_raw, decode_str, Ctx};
-use crate::codec::encode::{encode, encode_str, validate_write};
+use crate::codec::encode::{encode, encode_bytes, encode_str, validate_write};
 use crate::codec::mask_for;
+use crate::command::{condition_met, Delay, ParamValue, DEFAULT_POLL_INTERVAL_MS, MAX_WRITE_WORDS};
 use crate::convert::{desc_bufs, point_desc, point_words};
 use crate::desc::{DateTimeEncoding, ValueKind};
 use crate::error::{DecodeError, Error};
@@ -98,7 +99,7 @@ impl<'d, T: Transport> Device<'d, T> {
         let (p, b) = self.point(id)?;
         let regs = self.read_registers(p, b).await?;
         let refs = self.ref_context(p).await?;
-        decode_owned(p, b.space(), &regs, &Ctx { refs: &refs }).map_err(Error::Decode)
+        decode_sized(p, b.space(), &regs, &Ctx { refs: &refs }).map_err(Error::Decode)
     }
 
     /// Read a point by its semantic measurand tuple (spec §26.1).
@@ -172,6 +173,197 @@ impl<'d, T: Transport> Device<'d, T> {
             .map_err(Error::Transport)
     }
 
+    /// Execute a §11.7 command: `params` are the caller's inputs keyed by
+    /// `CommandParam.field`; the returned map holds results keyed by
+    /// `CommandResult.field`. Steps run strictly in declaration order; a
+    /// poll step past its `timeout_ms` fails with [`Error::PollTimeout`]
+    /// (elapsed time is accounted by accumulating the delays requested from
+    /// `delay` — no wall clock). Poll conditions and trigger writes use raw
+    /// (pre-transform) register values.
+    pub async fn run_command<D: Delay>(
+        &mut self,
+        id: &str,
+        params: &[(&str, ParamValue<'_>)],
+        delay: &mut D,
+    ) -> Result<BTreeMap<&'d str, DecodedValue>, Error<T::Error>> {
+        let cmd = self
+            .profile
+            .commands
+            .iter()
+            .find(|c| c.command_id == id)
+            .ok_or(Error::CommandNotFound)?;
+
+        for cp in &cmd.params {
+            if cp.required && !params.iter().any(|(f, _)| *f == cp.field) {
+                return Err(Error::RequiredParamMissing);
+            }
+        }
+
+        let mut bindings: BTreeMap<&'d str, DecodedValue> = BTreeMap::new();
+        for st in &cmd.steps {
+            match &st.step {
+                Some(schema::command_step::Step::Write(w)) => {
+                    self.run_write_step(cmd, w, params).await?;
+                }
+                Some(schema::command_step::Step::Poll(p)) => {
+                    self.run_poll_step(p, delay).await?;
+                }
+                Some(schema::command_step::Step::Read(r)) => {
+                    let v = self.read_command_point(&r.point_id).await?;
+                    if !r.into.is_empty() {
+                        bindings.insert(r.into.as_str(), v);
+                    }
+                }
+                None => return Err(Error::StepReference),
+            }
+        }
+
+        let mut out: BTreeMap<&'d str, DecodedValue> = BTreeMap::new();
+        for res in &cmd.results {
+            let v = match bindings.get(res.from.as_str()) {
+                Some(v) => v.clone(),
+                None => self.read_command_point(&res.from).await?,
+            };
+            out.insert(res.field.as_str(), v);
+        }
+        Ok(out)
+    }
+
+    async fn run_write_step(
+        &mut self,
+        cmd: &'d schema::Command,
+        w: &'d schema::WriteStep,
+        params: &[(&str, ParamValue<'_>)],
+    ) -> Result<(), Error<T::Error>> {
+        match &w.target {
+            Some(schema::write_step::Target::Param(field)) => {
+                let cp = cmd
+                    .params
+                    .iter()
+                    .find(|p| p.field == *field)
+                    .ok_or(Error::StepReference)?;
+                let Some((_, pv)) = params.iter().find(|(f, _)| f == field) else {
+                    return Ok(()); // optional param not supplied — skip its write
+                };
+                // A param carries its own wire mapping; encode through a
+                // synthetic point so the shared codec handles storage/order.
+                let pp = schema::Point {
+                    point_id: cp.field.clone(),
+                    storage_type: cp.storage_type,
+                    value_type: cp.value_type.clone(),
+                    mapping: cp.mapping.clone(),
+                    ..Default::default()
+                };
+                let bufs = desc_bufs(&pp);
+                let d = point_desc(&pp, schema::AddressSpace::HoldingRegister, &bufs);
+                let mut regs = vec![0u16; d.words()];
+                match pv {
+                    ParamValue::Value(v) => encode(&d, v, &Ctx::EMPTY, &mut regs)?,
+                    ParamValue::Str(s) => encode_str(&d, s, &mut regs)?,
+                    ParamValue::Bytes(b) => encode_bytes(&d, b, &mut regs)?,
+                }
+                let m = cp.mapping.as_ref();
+                let space = m
+                    .map(|m| m.space())
+                    .filter(|s| *s != schema::AddressSpace::Unspecified)
+                    .unwrap_or(schema::AddressSpace::HoldingRegister);
+                let off = m.map(|m| m.offset as u16).unwrap_or(0);
+                self.write_chunked(space, off, &regs).await
+            }
+            Some(schema::write_step::Target::Trigger(tr)) => {
+                let (p, b) = self.point(&tr.point_id).map_err(|_| Error::StepReference)?;
+                let space = effective_space(p, b);
+                let off = self.offset_of(p, b).await?;
+                // Trigger values are raw register values (§11.7): encode via
+                // storage/mapping only, bypassing transform/value_type.
+                let rp = raw_point(p);
+                let bufs = desc_bufs(&rp);
+                let d = point_desc(&rp, b.space(), &bufs);
+                let mut regs = vec![0u16; d.words()];
+                encode(&d, &Value::I64(tr.value), &Ctx::EMPTY, &mut regs)?;
+                self.write_chunked(space, off, &regs).await
+            }
+            None => Err(Error::StepReference),
+        }
+    }
+
+    async fn run_poll_step<D: Delay>(
+        &mut self,
+        p: &'d schema::PollStep,
+        delay: &mut D,
+    ) -> Result<(), Error<T::Error>> {
+        let (pt, b) = self.point(&p.point_id).map_err(|_| Error::StepReference)?;
+        let interval = if p.interval_ms > 0 {
+            p.interval_ms
+        } else {
+            DEFAULT_POLL_INTERVAL_MS
+        };
+        let mut elapsed: u64 = 0;
+        loop {
+            let raw = self.read_raw_int(pt, b).await?;
+            if condition_met(p.until.as_ref(), raw) {
+                return Ok(());
+            }
+            if p.timeout_ms > 0 && elapsed >= p.timeout_ms as u64 {
+                return Err(Error::PollTimeout);
+            }
+            delay.delay_ms(interval).await;
+            elapsed += interval as u64;
+        }
+    }
+
+    /// Read a point's raw (pre-transform) integer value (poll conditions).
+    async fn read_raw_int(
+        &mut self,
+        p: &'d schema::Point,
+        b: &'d schema::RegisterBlock,
+    ) -> Result<i64, Error<T::Error>> {
+        let regs = self.read_registers(p, b).await?;
+        let rp = raw_point(p);
+        let bufs = desc_bufs(&rp);
+        let d = point_desc(&rp, b.space(), &bufs);
+        let v = decode(&d, &regs, &Ctx::EMPTY)?;
+        v.as_i64().ok_or(Error::UnsupportedMapping(
+            "poll point is not integer-valued",
+        ))
+    }
+
+    /// Read/decode a point for a read step or result (length_ref-aware).
+    async fn read_command_point(&mut self, id: &str) -> Result<DecodedValue, Error<T::Error>> {
+        let (p, b) = self.point(id).map_err(|_| Error::StepReference)?;
+        let regs = self.read_registers(p, b).await?;
+        let refs = self.ref_context(p).await?;
+        decode_sized(p, b.space(), &regs, &Ctx { refs: &refs }).map_err(Error::Decode)
+    }
+
+    /// Write registers in ≤123-word slices (single-PDU FC16 cap).
+    async fn write_chunked(
+        &mut self,
+        space: schema::AddressSpace,
+        off: u16,
+        regs: &[u16],
+    ) -> Result<(), Error<T::Error>> {
+        match space {
+            schema::AddressSpace::Coil => self
+                .transport
+                .write_coil(off, regs.first().is_some_and(|w| *w != 0))
+                .await
+                .map_err(Error::Transport),
+            schema::AddressSpace::HoldingRegister => {
+                let mut o = off;
+                for chunk in regs.chunks(MAX_WRITE_WORDS) {
+                    self.transport
+                        .write_holding(o, chunk)
+                        .await
+                        .map_err(Error::Transport)?;
+                    o = o.wrapping_add(chunk.len() as u16);
+                }
+                Ok(())
+            }
+            _ => Err(Error::UnsupportedMapping("cannot write this address space")),
+        }
+    }
+
     // --- internals -------------------------------------------------------- //
 
     /// Read the points referenced by p's scale_ref / selector_ref
@@ -212,9 +404,50 @@ impl<'d, T: Transport> Device<'d, T> {
             ));
         }
         let space = effective_space(p, b);
-        let n = point_words(p);
+        let n = self.point_read_words(p).await?;
         let off = self.offset_of(p, b).await?;
         self.read_space(space, off, n).await
+    }
+
+    /// Effective register count for reading p: the static [`point_words`],
+    /// or — when the mapping sets `length_ref` (§11.7.1) — the decoded value
+    /// of the referenced point, clamped to `length_words` as an upper bound.
+    async fn point_read_words(&mut self, p: &'d schema::Point) -> Result<usize, Error<T::Error>> {
+        let Some(lr) = p.mapping.as_ref().and_then(|m| m.length_ref.as_ref()) else {
+            return Ok(point_words(p));
+        };
+        let (rp, rb) = self.point(&lr.point_id)?;
+        // MDE506 forbids chains/cycles; guard so a bad document cannot recurse.
+        if rp
+            .mapping
+            .as_ref()
+            .and_then(|m| m.length_ref.as_ref())
+            .is_some()
+        {
+            return Err(Error::UnsupportedMapping("chained length_ref"));
+        }
+        let space = effective_space(rp, rb);
+        let off = self.offset_of(rp, rb).await?;
+        let regs = self.read_space(space, off, point_words(rp)).await?;
+        let bufs = desc_bufs(rp);
+        let d = point_desc(rp, rb.space(), &bufs);
+        let v = decode(&d, &regs, &Ctx::EMPTY)?;
+        let iv = v
+            .as_i64()
+            .filter(|iv| *iv >= 0)
+            .ok_or(Error::UnsupportedMapping(
+                "length_ref target is not a non-negative integer",
+            ))?;
+        let mut n = iv as usize;
+        let max = p
+            .mapping
+            .as_ref()
+            .map(|m| m.length_words as usize)
+            .unwrap_or(0);
+        if max > 0 && n > max {
+            n = max;
+        }
+        Ok(n)
     }
 
     async fn read_space(
@@ -344,6 +577,37 @@ fn effective_space(p: &schema::Point, b: &schema::RegisterBlock) -> schema::Addr
         Some(s) if s != schema::AddressSpace::Unspecified => s,
         _ => b.space(),
     }
+}
+
+/// Storage/mapping-only copy of a point: trigger writes and poll reads are
+/// raw register values (§11.7), bypassing transform and value_type.
+fn raw_point(p: &schema::Point) -> schema::Point {
+    schema::Point {
+        point_id: p.point_id.clone(),
+        storage_type: p.storage_type,
+        mapping: p.mapping.clone(),
+        ..Default::default()
+    }
+}
+
+/// [`decode_owned`], but honouring a `length_ref`-sized read: when the
+/// register window is shorter than the mapping's declared `length_words`
+/// clamp, decode at the runtime length (string/bytes lengths follow it).
+fn decode_sized(
+    p: &schema::Point,
+    block_space: schema::AddressSpace,
+    regs: &[u16],
+    ctx: &Ctx<'_>,
+) -> Result<DecodedValue, DecodeError> {
+    let has_length_ref = p.mapping.as_ref().is_some_and(|m| m.length_ref.is_some());
+    if has_length_ref && regs.len() != point_words(p) {
+        let mut sized = p.clone();
+        if let Some(m) = sized.mapping.as_mut() {
+            m.length_words = regs.len() as u32;
+        }
+        return decode_owned(&sized, block_space, regs, ctx);
+    }
+    decode_owned(p, block_space, regs, ctx)
 }
 
 /// Decode a point's registers into an owned [`DecodedValue`]. Date/times are

@@ -93,6 +93,15 @@ message Mapping {
   // storage width. bit_length = 0 means "no bit window".
   uint32 bit_offset = 14;
   uint32 bit_length = 15;
+
+  // v0.5 §11.7 — dynamic element/word count for this mapping's read, resolved
+  // from another point in the same device profile at read time (e.g. an
+  // "Output Message Length" register gating a variable-length signature-blob
+  // read). Effective word count = the decoded value of the referenced point,
+  // clamped to length_words as an upper bound if length_words is also set.
+  // Must resolve within the same device profile (MDE407); must reference an
+  // integer-valued point (MDE505); must not form a cycle (MDE506).
+  PointRef length_ref = 16;
 }
 
 // §14 Mantissa/exponent composed value: value = mantissa * base^exponent.
