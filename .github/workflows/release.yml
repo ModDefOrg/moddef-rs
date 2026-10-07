@@ -1,0 +1,54 @@
+name: Release
+
+# Publishes the workspace crates to crates.io when a version tag is pushed.
+# Authentication uses crates.io Trusted Publishing (OIDC): each crate's
+# settings on crates.io must list this repository and this workflow file
+# (and the `crates-io` environment) as a trusted publisher. No long-lived
+# token is stored in the repository.
+#
+# Release procedure:
+#   1. bump [workspace.package].version in Cargo.toml, commit to main
+#   2. git tag v<version> && git push origin v<version>
+
+on:
+  push:
+    tags: ['v*']
+
+env:
+  CARGO_TERM_COLOR: always
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    name: Publish to crates.io
+    runs-on: ubuntu-latest
+    environment: crates-io
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Tag matches workspace version
+        run: |
+          version="$(cargo metadata --no-deps --format-version 1 \
+            | jq -r '.packages[] | select(.name == "moddef-core") | .version')"
+          if [ "v${version}" != "${GITHUB_REF_NAME}" ]; then
+            echo "::error::tag ${GITHUB_REF_NAME} does not match workspace version v${version}"
+            exit 1
+          fi
+          echo "Releasing v${version}"
+
+      - name: Package check (no upload)
+        run: cargo publish --workspace --locked --dry-run
+
+      - name: Authenticate with crates.io (Trusted Publishing)
+        id: auth
+        uses: rust-lang/crates-io-auth-action@v1
+
+      - name: Publish
+        run: cargo publish --workspace --locked
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}

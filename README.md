@@ -1,13 +1,13 @@
 # moddef-rs
 
-Rust runtime + code generator for [ModDef](../moddef) (spec v0.4) — declarative
+Rust runtime + code generator for [ModDef](https://github.com/ModDefOrg/moddef) (spec v0.4) — declarative
 Modbus device definitions.
 
 | Crate | What it is |
 | --- | --- |
-| [`moddef-core`](crates/moddef-core) | Runtime: `no_std` codec core, `Transport` trait, typed errors; document parsing (`.moddef.yaml` / `.moddef.json` / binary `.moddef`) and an untyped `Device` facade under the default `std` feature. |
-| [`moddef-codegen`](crates/moddef-codegen) | Generator: emits a typed `struct <Device><T: Transport>` per profile, plus the `moddef-rs gen` CLI. |
-| [`moddef-tokio-modbus`](crates/moddef-tokio-modbus) | `Transport` adapter over tokio-modbus (TCP by default, RTU behind the `rtu` feature). |
+| [`moddef-core`](https://github.com/ModDefOrg/moddef-rs/tree/main/crates/moddef-core) | Runtime: `no_std` codec core, `Transport` trait, typed errors; document parsing (`.moddef.yaml` / `.moddef.json` / binary `.moddef`) and an untyped `Device` facade under the default `std` feature. |
+| [`moddef-codegen`](https://github.com/ModDefOrg/moddef-rs/tree/main/crates/moddef-codegen) | Generator: emits a typed `struct <Device><T: Transport>` per profile, plus the `moddef-rs gen` CLI. |
+| [`moddef-tokio-modbus`](https://github.com/ModDefOrg/moddef-rs/tree/main/crates/moddef-tokio-modbus) | `Transport` adapter over tokio-modbus (TCP by default, RTU behind the `rtu` feature). |
 
 ## Parse a profile at runtime (no codegen)
 
@@ -39,7 +39,7 @@ let soc   = dev.get_state_of_charge().await?;  // §26.2 measurand convenience
 
 Generated clients drive the codec core directly over a `static` descriptor
 table — no allocation, no `std` — so the same client runs on tokio and on a
-Cortex-M with embassy. See [examples/embedded-nostd](examples/embedded-nostd)
+Cortex-M with embassy. See [examples/embedded-nostd](https://github.com/ModDefOrg/moddef-rs/tree/main/examples/embedded-nostd)
 (builds for `thumbv7em-none-eabihf`).
 
 ## Feature flags (`moddef-core`)
@@ -73,5 +73,5 @@ runtime, not to your generated code.
 
 ## License
 
-Apache-2.0. See [LICENSE](LICENSE), [NOTICE](NOTICE), and
-[CONTRIBUTING.md](CONTRIBUTING.md).
+Apache-2.0. See [LICENSE](https://github.com/ModDefOrg/moddef-rs/blob/main/LICENSE), [NOTICE](https://github.com/ModDefOrg/moddef-rs/blob/main/NOTICE), and
+[CONTRIBUTING.md](https://github.com/ModDefOrg/moddef-rs/blob/main/CONTRIBUTING.md).
