@@ -365,7 +365,7 @@ dependencies = [
 
 [[package]]
 name = "moddef-codegen"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "heck",
  "moddef-core",
@@ -377,7 +377,7 @@ dependencies = [
 
 [[package]]
 name = "moddef-conformance"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "moddef-codegen",
  "moddef-core",
@@ -389,7 +389,7 @@ dependencies = [
 
 [[package]]
 name = "moddef-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "pbjson",
  "pbjson-build",
@@ -404,7 +404,7 @@ dependencies = [
 
 [[package]]
 name = "moddef-tokio-modbus"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "moddef-core",
  "tokio",
